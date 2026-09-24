@@ -217,3 +217,16 @@ export const PLANT_GEOMETRIES = Object.fromEntries(
     Array.from({ length: VARIANTS }, (_, variant) => buildPlant(species, hash(`${species}:${variant}`))),
   ]),
 ) as Record<Species, BufferGeometry[]>;
+
+// Height and horizontal reach of every species variant, before instance
+// scale. The pick shapes and the entry label use them.
+export const PLANT_SIZES = Object.fromEntries(
+  Object.entries(PLANT_GEOMETRIES).map(([species, variants]) => [
+    species,
+    variants.map((geometry) => {
+      geometry.computeBoundingBox();
+      const { min, max } = geometry.boundingBox!;
+      return { height: max.y, reach: Math.max(-min.x, max.x, -min.z, max.z) };
+    }),
+  ]),
+) as Record<Species, { height: number; reach: number }[]>;

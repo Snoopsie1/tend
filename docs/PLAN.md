@@ -76,4 +76,4 @@ The timeline runs into the screen. Today is the front row, and older days recede
 - **Pitch depends on the aspect.** A phone's front heads are about 26 px, so the rows fade out within about twice the front distance. At a 32° pitch, that depth filled a thin band under an empty upper half of the screen. `pitchFor()` now goes from 32° on landscape to 55° on a 390x844 phone.
 - **Slots follow creation order.** The k-th entry of a day takes slot k, so a new entry never moves the plants already there. Sorting by id would break that once ids are random UUIDs in milestone 3.
 - **R3F fires `onClick` after a drag.** The pick mesh ignores clicks that moved more than 8 px.
-- **The entry card is a sibling of the canvas.** Inside the R3F container, a tap on the card would reach the garden as a phantom hit.
+- **The entry label sits above its plant.** On desktop it shows on hover, on a phone on tap. It is a DOM sibling of the canvas that ignores the pointer, and a tracker inside the canvas moves it every frame. Inside the R3F container, a tap on it would reach the garden as a phantom hit.

@@ -13,7 +13,7 @@ import {
   type BufferGeometry,
 } from "three";
 import type { Plant } from "@/lib/layout";
-import { PLANT_GEOMETRIES, speciesOf, type Species } from "@/lib/species";
+import { PLANT_GEOMETRIES, PLANT_SIZES, speciesOf } from "@/lib/species";
 
 const plantMaterial = new MeshLambertMaterial({ vertexColors: true, side: DoubleSide });
 
@@ -21,18 +21,6 @@ const plantMaterial = new MeshLambertMaterial({ vertexColors: true, side: Double
 // on a plant counts, not only on its thin stem.
 const pickMaterial = new MeshBasicMaterial({ visible: false });
 const pickGeometry = new SphereGeometry(1, 6, 4);
-
-// Height and reach of every species variant, for the pick shapes.
-const PICK_SHAPES = Object.fromEntries(
-  Object.entries(PLANT_GEOMETRIES).map(([species, variants]) => [
-    species,
-    variants.map((geometry) => {
-      geometry.computeBoundingBox();
-      const { min, max } = geometry.boundingBox!;
-      return { height: max.y, reach: Math.max(-min.x, max.x, -min.z, max.z) };
-    }),
-  ]),
-) as Record<Species, { height: number; reach: number }[]>;
 
 // Scratch objects, only touched inside layout effects.
 const position = new Vector3();
@@ -60,12 +48,17 @@ function PlantMesh({ geometry, plants }: { geometry: BufferGeometry; plants: Pla
   return <instancedMesh ref={ref} args={[geometry, plantMaterial, plants.length]} frustumCulled={false} />;
 }
 
-function PickMesh({ plants, onSelect }: { plants: Plant[]; onSelect: (index: number) => void }) {
+type PlantEvents = {
+  onSelect: (index: number) => void;
+  onHover: (index: number | null) => void;
+};
+
+function PickMesh({ plants, onSelect, onHover }: { plants: Plant[] } & PlantEvents) {
   const ref = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     const mesh = ref.current!;
     plants.forEach((plant, i) => {
-      const { height, reach } = PICK_SHAPES[speciesOf(plant)][plant.variant];
+      const { height, reach } = PLANT_SIZES[speciesOf(plant)][plant.variant];
       const halfHeight = Math.max(height / 2, 0.12) * plant.scale;
       const radius = Math.max(reach, 0.15) * plant.scale;
       transform.compose(position.set(plant.x, halfHeight, plant.z), rotation.identity(), scale.set(radius, halfHeight, radius));
@@ -83,12 +76,32 @@ function PickMesh({ plants, onSelect }: { plants: Plant[]; onSelect: (index: num
     onSelect(event.instanceId);
   };
 
-  return <instancedMesh ref={ref} args={[pickGeometry, pickMaterial, plants.length]} onClick={select} />;
+  // Hover is for a mouse with no button down. A finger mid-swipe or a mouse
+  // drag must not flash labels over every plant it passes.
+  const hover = (event: ThreeEvent<PointerEvent>) => {
+    // Keep this before onHover. stopPropagation fires onPointerOut on the
+    // plants behind, which sets the hover to null.
+    event.stopPropagation();
+    const idle = event.nativeEvent.pointerType === "mouse" && event.nativeEvent.buttons === 0;
+    onHover(idle && event.instanceId !== undefined ? event.instanceId : null);
+  };
+
+  const leave = () => onHover(null);
+
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[pickGeometry, pickMaterial, plants.length]}
+      onClick={select}
+      onPointerMove={hover}
+      onPointerOut={leave}
+    />
+  );
 }
 
 // One instanced mesh per species and variant, plus one pick mesh. The pick
 // mesh keeps the order of plants, so its instanceId is the plant's index.
-export default function Plants({ plants, onSelect }: { plants: Plant[]; onSelect: (index: number) => void }) {
+export default function Plants({ plants, onSelect, onHover }: { plants: Plant[] } & PlantEvents) {
   const groups = useMemo(() => {
     const byKey = new Map<string, { geometry: BufferGeometry; plants: Plant[] }>();
     for (const plant of plants) {
@@ -106,7 +119,7 @@ export default function Plants({ plants, onSelect }: { plants: Plant[]; onSelect
       {groups.map(([key, group]) => (
         <PlantMesh key={key} geometry={group.geometry} plants={group.plants} />
       ))}
-      <PickMesh plants={plants} onSelect={onSelect} />
+      <PickMesh plants={plants} onSelect={onSelect} onHover={onHover} />
     </>
   );
 }

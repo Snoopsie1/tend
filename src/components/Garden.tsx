@@ -1,15 +1,17 @@
 "use client";
 
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
-import { useState } from "react";
+import { useRef, useState, type RefObject } from "react";
+import { Vector3, type Fog } from "three";
 import CameraController from "@/components/CameraController";
 import Plants from "@/components/Plants";
 import { formatDay, localDayKey } from "@/lib/days";
 import { demoEntries } from "@/lib/demo-data";
-import { TAG_LABELS, type Entry } from "@/lib/entries";
+import { TAG_LABELS } from "@/lib/entries";
 import { layoutGarden } from "@/lib/layout";
 import { PAPER, RisoEffect } from "@/lib/riso-effect";
+import { PLANT_SIZES, speciesOf } from "@/lib/species";
 
 function Riso() {
   const dpr = useThree((state) => state.viewport.dpr);
@@ -17,23 +19,35 @@ function Riso() {
   return <primitive object={effect} pixelRatio={dpr} />;
 }
 
-function EntryCard({ entry, onClose }: { entry: Entry; onClose: () => void }) {
-  return (
-    <article className="absolute inset-x-4 bottom-4 mx-auto max-w-sm border-2 border-ink-blue bg-paper p-4 pr-12 text-ink-blue shadow-[4px_4px_0_var(--color-ink-pink)]">
-      <p className="font-mono text-xs uppercase tracking-wide">
-        {formatDay(entry.date)} · {entry.tag ? TAG_LABELS[entry.tag] : "weed"}
-      </p>
-      <p className="mt-2 text-lg leading-snug">{entry.text}</p>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center text-2xl"
-      >
-        ×
-      </button>
-    </article>
-  );
+// Space between the top of the plant and the bottom of the label, and
+// between the label and the screen edges, in CSS px.
+const LABEL_GAP = 10;
+const EDGE = 8;
+
+// Scratch vectors, only touched in the frame callback.
+const point = new Vector3();
+const view = new Vector3();
+
+// Moves the label above its plant every frame, after the camera has moved.
+// Hides it when the plant is off screen or has faded into the paper.
+function LabelTracker({ labelRef, anchor }: { labelRef: RefObject<HTMLDivElement | null>; anchor: Vector3 | null }) {
+  useFrame(({ camera, size, scene }) => {
+    const element = labelRef.current;
+    if (!element || !anchor) return;
+    camera.updateMatrixWorld();
+    const depth = -view.copy(anchor).applyMatrix4(camera.matrixWorldInverse).z;
+    point.copy(anchor).project(camera);
+    const onScreen = depth > 0 && depth < (scene.fog as Fog).far && Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1;
+    element.style.visibility = onScreen ? "visible" : "hidden";
+    if (!onScreen) return;
+
+    const x = ((point.x + 1) / 2) * size.width;
+    const y = ((1 - point.y) / 2) * size.height;
+    const left = Math.min(Math.max(x - element.offsetWidth / 2, EDGE), size.width - element.offsetWidth - EDGE);
+    const top = Math.max(y - element.offsetHeight - LABEL_GAP, EDGE);
+    element.style.transform = `translate(${left}px, ${top}px)`;
+  });
+  return null;
 }
 
 export default function Garden() {
@@ -44,9 +58,21 @@ export default function Garden() {
   const [plants] = useState(() => layoutGarden(entries, today));
   const [depth] = useState(() => -Math.min(...plants.map((plant) => plant.z)));
   const [selected, setSelected] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+
+  // Hover wins, so a mouse can read other plants while one is selected.
+  const shown = hovered ?? selected;
+  const entry = shown === null ? null : entries[shown];
+  let anchor: Vector3 | null = null;
+  if (shown !== null) {
+    const plant = plants[shown];
+    const { height } = PLANT_SIZES[speciesOf(plant)][plant.variant];
+    anchor = new Vector3(plant.x, height * plant.scale, plant.z);
+  }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full overflow-hidden" style={hovered === null ? undefined : { cursor: "pointer" }}>
       <Canvas
         flat
         dpr={[1, 2]}
@@ -64,16 +90,31 @@ export default function Garden() {
           <planeGeometry args={[60, depth + 60]} />
           <meshLambertMaterial color="#d6e6c8" />
         </mesh>
-        <Plants plants={plants} onSelect={setSelected} />
+        <Plants plants={plants} onSelect={setSelected} onHover={setHovered} />
 
         <CameraController depth={depth} />
+        <LabelTracker labelRef={labelRef} anchor={anchor} />
         <EffectComposer multisampling={0}>
           <Riso />
         </EffectComposer>
       </Canvas>
 
-      {/* A sibling of the canvas, so taps on the card never reach the garden. */}
-      {selected !== null && <EntryCard entry={entries[selected]} onClose={() => setSelected(null)} />}
+      {/* A sibling of the canvas that ignores the pointer, so it never
+          blocks a tap or a hover on the garden. Hidden until the tracker
+          has placed it, and remounted per plant. */}
+      {entry && (
+        <div
+          key={shown}
+          ref={labelRef}
+          style={{ visibility: "hidden" }}
+          className="pointer-events-none absolute top-0 left-0 max-w-72 border-2 border-ink-blue bg-paper px-3 py-2 text-ink-blue shadow-[3px_3px_0_var(--color-ink-pink)]"
+        >
+          <p className="font-mono text-[10px] whitespace-nowrap uppercase tracking-wide">
+            {formatDay(entry.date)} · {entry.tag ? TAG_LABELS[entry.tag] : "weed"}
+          </p>
+          <p className="mt-1 text-sm leading-snug">{entry.text}</p>
+        </div>
+      )}
     </div>
   );
 }
