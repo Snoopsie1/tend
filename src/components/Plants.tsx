@@ -22,25 +22,26 @@ const plantMaterial = new MeshLambertMaterial({ vertexColors: true, side: Double
 const pickMaterial = new MeshBasicMaterial({ visible: false });
 const pickGeometry = new SphereGeometry(1, 6, 4);
 
-// Scratch objects, only touched inside layout effects.
+// Scratch objects, only touched inside effects and frame callbacks.
 const position = new Vector3();
 const rotation = new Quaternion();
 const euler = new Euler();
 const scale = new Vector3();
 const transform = new Matrix4();
 
+// Where a plant stands, turned and scaled. The spotlight mask uses it too.
+export const plantMatrix = (plant: Plant, target: Matrix4) =>
+  target.compose(
+    position.set(plant.x, 0, plant.z),
+    rotation.setFromEuler(euler.set(0, plant.yaw, 0)),
+    scale.setScalar(plant.scale),
+  );
+
 function PlantMesh({ geometry, plants }: { geometry: BufferGeometry; plants: Plant[] }) {
   const ref = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     const mesh = ref.current!;
-    plants.forEach((plant, i) => {
-      transform.compose(
-        position.set(plant.x, 0, plant.z),
-        rotation.setFromEuler(euler.set(0, plant.yaw, 0)),
-        scale.setScalar(plant.scale),
-      );
-      mesh.setMatrixAt(i, transform);
-    });
+    plants.forEach((plant, i) => mesh.setMatrixAt(i, plantMatrix(plant, transform)));
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
   }, [plants]);

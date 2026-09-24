@@ -1,23 +1,18 @@
 "use client";
 
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer } from "@react-three/postprocessing";
 import { useRef, useState, type RefObject } from "react";
 import { Vector3, type Fog } from "three";
 import CameraController from "@/components/CameraController";
 import Plants from "@/components/Plants";
+import Riso from "@/components/Riso";
 import { formatDay, localDayKey } from "@/lib/days";
 import { demoEntries } from "@/lib/demo-data";
 import { TAG_LABELS } from "@/lib/entries";
 import { layoutGarden } from "@/lib/layout";
-import { PAPER, RisoEffect } from "@/lib/riso-effect";
+import { PAPER } from "@/lib/riso-effect";
 import { PLANT_SIZES, speciesOf } from "@/lib/species";
-
-function Riso() {
-  const dpr = useThree((state) => state.viewport.dpr);
-  const [effect] = useState(() => new RisoEffect());
-  return <primitive object={effect} pixelRatio={dpr} />;
-}
 
 // Space between the top of the plant and the bottom of the label, and
 // between the label and the screen edges, in CSS px.
@@ -64,9 +59,9 @@ export default function Garden() {
   // Hover wins, so a mouse can read other plants while one is selected.
   const shown = hovered ?? selected;
   const entry = shown === null ? null : entries[shown];
+  const plant = shown === null ? null : plants[shown];
   let anchor: Vector3 | null = null;
-  if (shown !== null) {
-    const plant = plants[shown];
+  if (plant) {
     const { height } = PLANT_SIZES[speciesOf(plant)][plant.variant];
     anchor = new Vector3(plant.x, height * plant.scale, plant.z);
   }
@@ -95,7 +90,7 @@ export default function Garden() {
         <CameraController depth={depth} />
         <LabelTracker labelRef={labelRef} anchor={anchor} />
         <EffectComposer multisampling={0}>
-          <Riso />
+          <Riso highlight={plant} />
         </EffectComposer>
       </Canvas>
 
