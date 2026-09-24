@@ -1,5 +1,5 @@
 import { Effect, EffectAttribute } from "postprocessing";
-import { Color, Matrix3, Uniform, Vector2, Vector3 } from "three";
+import { Color, Matrix3, Uniform, Vector2, Vector3, type Texture } from "three";
 
 // Screen approximations of the three Riso inks, as printed on white stock.
 export const INKS = {
@@ -27,6 +27,10 @@ const PLATES = {
   blue: { angle: 45, offset: [-1.2, 0.6] },
   yellow: { angle: 75, offset: [0.4, 1.4] },
 } as const;
+// Under the spotlight, the rest of the garden keeps this share of its ink,
+// and the pink plate prints a halo this wide around the plant.
+const KNOCK_BACK = 0.3;
+const HALO_PX = 3;
 
 const fragmentShader = /* glsl */ `
 uniform mat3 separation;
@@ -41,6 +45,12 @@ uniform vec2 offsetBlue;
 uniform vec2 offsetYellow;
 uniform float cellSize;
 uniform float pixelRatio;
+// The spotlit plant alone, white on black, and how far the spotlight has
+// faded in (0 = off).
+uniform sampler2D highlight;
+uniform float spotlight;
+uniform float knockBack;
+uniform float haloPx;
 
 // Dave Hoskins' hash12. Stays stable on mobile GPUs, where sin() of large
 // pixel coordinates loses precision and bands.
@@ -80,6 +90,17 @@ float blotch(vec2 q, float seed) {
   return 0.8 + 0.4 * (n / 1.5);
 }
 
+// The mask grown by haloPx, from 8 taps around the pixel.
+float halo(vec2 uv) {
+  vec2 reach = haloPx * pixelRatio / resolution;
+  float grown = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float a = float(i) * 0.7853982;
+    grown = max(grown, texture2D(highlight, uv + vec2(cos(a), sin(a)) * reach).r);
+  }
+  return grown;
+}
+
 // One ink plate, screened per pixel like a RIP does it. Each pixel compares
 // its own coverage against a round spot on a grid turned by the plate angle,
 // so solid ink keeps the true edge of the geometry and only tints break into
@@ -94,6 +115,14 @@ vec2 plate(vec2 px, float angle, vec2 offset, vec3 channel, float seed) {
 
   vec2 sampleUv = clamp(shifted / resolution, 0.0, 1.0);
   float amount = dot(inkCoverage(texture2D(inputBuffer, sampleUv).rgb), channel);
+  // Spotlight. Everything but the plant is knocked back to a light screen,
+  // and the pink plate prints a halo around it. The mask is read at the
+  // plate's own offset, so the knock-back misregisters like the ink does.
+  if (spotlight > 0.0) {
+    float held = texture2D(highlight, sampleUv).r;
+    amount *= mix(1.0, knockBack, spotlight * (1.0 - held));
+    if (channel.x > 0.5) amount = max(amount, spotlight * max(halo(sampleUv) - held, 0.0));
+  }
   // Dot radius in cell units. 0.7071 is half the cell diagonal, so coverage 1
   // fills the cell.
   float r = sqrt(amount) * 0.7071;
@@ -170,11 +199,21 @@ export class RisoEffect extends Effect {
         ["offsetYellow", new Uniform(new Vector2(...PLATES.yellow.offset))],
         ["cellSize", new Uniform(CELL_SIZE)],
         ["pixelRatio", new Uniform(1)],
+        ["highlight", new Uniform<Texture | null>(null)],
+        ["spotlight", new Uniform(0)],
+        ["knockBack", new Uniform(KNOCK_BACK)],
+        ["haloPx", new Uniform(HALO_PX)],
       ]),
     });
   }
 
   set pixelRatio(value: number) {
     this.uniforms.get("pixelRatio")!.value = value;
+  }
+
+  // Spotlight one plant through its mask. An amount of 0 turns it off.
+  setSpotlight(mask: Texture | null, amount: number) {
+    this.uniforms.get("highlight")!.value = mask;
+    this.uniforms.get("spotlight")!.value = amount;
   }
 }

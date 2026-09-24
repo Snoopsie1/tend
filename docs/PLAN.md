@@ -66,3 +66,15 @@ If the look fails here, change the art plan before milestone 2.
 - **Blotches change density, not coverage.** Thinner coverage let red leak through blue and made hard-edged patches.
 - **Stem width.** Solid stems hold down to about 1.6 CSS px on a phone. Tinted or lit parts break up below one cell, 6 CSS px. Milestone 2 stems must be solid ink, or at least 6 CSS px wide at the smallest zoom.
 - **Portrait.** The camera backs off below aspect 1.3 (`FIT_ASPECT`), so a 390x844 phone shows the whole test scene. The garden camera in milestone 2 needs its own rule for portrait.
+
+## Milestone 2, garden
+
+The timeline runs into the screen. Today is the front row, and older days recede. Every row is 4 world units wide, and the camera stands where one row plus a margin fills the screen width (`fitDistance` in `src/lib/camera-fit.ts`). Rows fade into the paper where a flower head drops under 12 CSS px, because fog in the paper color prints no ink.
+
+### What milestone 2 found
+
+- **Pitch depends on the aspect.** A phone's front heads are about 26 px, so the rows fade out within about twice the front distance. At a 32° pitch, that depth filled a thin band under an empty upper half of the screen. `pitchFor()` now goes from 32° on landscape to 55° on a 390x844 phone.
+- **Slots follow creation order.** The k-th entry of a day takes slot k, so a new entry never moves the plants already there. Sorting by id would break that once ids are random UUIDs in milestone 3.
+- **R3F fires `onClick` after a drag.** The pick mesh ignores clicks that moved more than 8 px.
+- **The entry label sits above its plant.** On desktop it shows on hover, on a phone on tap. It is a DOM sibling of the canvas that ignores the pointer, and a tracker inside the canvas moves it every frame. Inside the R3F container, a tap on it would reach the garden as a phantom hit.
+- **Spotlight on the shown plant.** A small extra render draws that plant alone into a half-resolution mask. The riso filter keeps it in full ink, knocks the rest back to 30% of its ink (`KNOCK_BACK`) and prints a 3 px pink halo around it (`HALO_PX`). Dimming means less ink here, because a darker overlay would print as muddy three-ink dots.
