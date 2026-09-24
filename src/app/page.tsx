@@ -1,9 +1,9 @@
-import RisoTestScene from "@/components/RisoTestScene";
+import Garden from "@/components/Garden";
 
 export default function Home() {
   return (
     <main className="h-dvh w-full">
-      <RisoTestScene />
+      <Garden />
     </main>
   );
 }

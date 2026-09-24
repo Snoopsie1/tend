@@ -10,6 +10,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Same hexes as INKS and PAPER in src/lib/riso-effect.ts. */
+  --color-paper: #f4efe4;
+  --color-ink-pink: #ff48b0;
+  --color-ink-blue: #0078bf;
+  --color-ink-yellow: #ffe800;
 }
 
 @media (prefers-color-scheme: dark) {
