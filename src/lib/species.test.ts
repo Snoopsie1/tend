@@ -9,6 +9,7 @@ const BUDGET: Record<Species, number> = {
   nature: 300,
   smallJoys: 300,
   weed: 60,
+  compost: 60,
 };
 
 describe("plant geometries", () => {

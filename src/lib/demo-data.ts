@@ -93,9 +93,13 @@ export function demoEntries(today: string, days = 182): Entry[] {
       const id = `demo-${offset}-${i}`;
       if (kind === "good") {
         const tag = pick(rng, TAGS);
-        entries.push({ id, date, kind, tag, text: pick(rng, GOODS[tag]) });
+        entries.push({ id, date, kind, tag, text: pick(rng, GOODS[tag]), slot: i });
       } else {
-        entries.push({ id, date, kind, text: pick(rng, BADS) });
+        const text = pick(rng, BADS);
+        // About half the old weeds are pulled the next day, so visitors see
+        // compost without logging in. Today's weeds are still growing.
+        const pulled = rng() < 0.5 && offset > 0;
+        entries.push({ id, date, kind, text, slot: i, ...(pulled ? { pulledAt: `${addDays(date, 1)}T12:00:00Z` } : {}) });
       }
     });
   }

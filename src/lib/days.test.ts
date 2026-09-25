@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, formatDay, localDayKey } from "@/lib/days";
+import { addDays, daysBetween, formatDay, isDayKey, isoWeekKey, localDayKey } from "@/lib/days";
 
 describe("days", () => {
   it("adds days across month and year ends", () => {
@@ -15,6 +15,20 @@ describe("days", () => {
 
   it("uses the local calendar day", () => {
     expect(localDayKey(new Date(2026, 8, 24, 23, 30))).toBe("2026-09-24");
+  });
+
+  it("names ISO weeks, including across year ends", () => {
+    expect(isoWeekKey("2026-01-01")).toBe("2026-W01");
+    expect(isoWeekKey("2025-12-29")).toBe("2026-W01");
+    expect(isoWeekKey("2027-01-01")).toBe("2026-W53");
+    expect(isoWeekKey("2026-09-20")).toBe("2026-W38");
+    expect(isoWeekKey("2026-09-21")).toBe("2026-W39");
+  });
+
+  it("knows a real calendar day", () => {
+    expect(isDayKey("2026-09-24")).toBe(true);
+    expect(isDayKey("2026-02-31")).toBe(false);
+    expect(isDayKey("2026-9-24")).toBe(false);
   });
 
   it("formats a day for the entry card", () => {

@@ -1,0 +1,68 @@
+<!--
+  Tend sign-in mail. Source of truth for BOTH Supabase templates:
+  Authentication > Emails > "Magic Link" and "Confirm signup"
+  (a first sign-in can go out on the signup template).
+
+  Paste as-is. Built like Gymie's supabase/emails/sign-in.html:
+  - Tables and inline styles only. Outlook ignores <style>, flexbox and grid.
+  - The pink offset shadow is a pink cell with 4px right and bottom padding
+    behind the card, because box-shadow does not render in Outlook.
+  - {{ .Token }} must stay. An installed iPhone app has its own cookies, so
+    the link signs you in to Safari instead. Typing the code is the only way
+    in there.
+-->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">Your Tend code: {{ .Token }}</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4efe4;margin:0;padding:28px 12px">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px">
+
+        <tr>
+          <td style="padding-bottom:16px;font-family:Helvetica,Arial,sans-serif;font-size:34px;line-height:36px;font-weight:700;letter-spacing:-0.5px;color:#0078bf">
+            Tend
+          </td>
+        </tr>
+
+        <!-- card on its pink offset shadow -->
+        <tr>
+          <td style="background-color:#ff48b0;padding:0 4px 4px 0">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4efe4;border:2px solid #0078bf">
+              <tr>
+                <td style="padding:24px;font-family:Helvetica,Arial,sans-serif;color:#0078bf">
+                  <p style="margin:0 0 6px 0;font-family:'Courier New',Courier,monospace;font-size:13px;line-height:18px;letter-spacing:1.5px;text-transform:uppercase">
+                    Your code
+                  </p>
+                  <p style="margin:0 0 18px 0;font-size:15px;line-height:22px">
+                    Type it in Tend to open your garden.
+                  </p>
+
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td align="center" style="border:2px solid #0078bf;padding:16px 10px">
+                        <span style="font-family:'Courier New',Courier,monospace;font-size:30px;line-height:34px;letter-spacing:8px;font-weight:700;color:#0078bf">{{ .Token }}</span>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p style="margin:18px 0 0 0;font-size:15px;line-height:22px">
+                    Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email" style="color:#0078bf;font-weight:700;text-decoration:underline">open Tend in this browser</a>.
+                  </p>
+                  <p style="margin:14px 0 0 0;font-size:13px;line-height:19px">
+                    Tend on your phone's home screen? Use the code. The link opens Safari, and Tend lives in its own window.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding-top:16px;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#0078bf">
+            Did not ask for this? Ignore it. Nobody gets in without the code.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

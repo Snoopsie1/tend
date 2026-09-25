@@ -1,4 +1,5 @@
-import { daysBetween } from "@/lib/days";
+import { compostBoost } from "@/lib/compost";
+import { daysBetween, isoWeekKey } from "@/lib/days";
 import type { Entry, Tag } from "@/lib/entries";
 import { hash, mulberry32, range } from "@/lib/random";
 
@@ -18,6 +19,8 @@ export type Plant = {
   entryId: string;
   kind: Entry["kind"];
   tag?: Tag;
+  // A Bad whose weed was pulled into compost.
+  pulled: boolean;
   x: number;
   z: number;
   yaw: number;
@@ -25,28 +28,27 @@ export type Plant = {
   variant: number;
 };
 
-// Entries must come in creation order. The k-th entry of a day takes slot
-// k, so a new entry never moves the plants that are already there. All
-// jitter comes from the entry id, never from the array index.
+// Each entry stands in its stored slot, so adding or deleting an entry never
+// moves the other plants. All jitter comes from the entry id. Flowers grow
+// with the compost of their week.
 export function layoutGarden(entries: readonly Entry[], today: string): Plant[] {
-  const countPerDay = new Map<string, number>();
+  const boost = compostBoost(entries);
   return entries.map((entry) => {
-    const k = countPerDay.get(entry.date) ?? 0;
-    countPerDay.set(entry.date, k + 1);
-
     const seed = hash(entry.id);
     const rng = mulberry32(seed);
-    const slot = k % SLOTS;
-    const subRow = Math.floor(k / SLOTS);
+    const slot = entry.slot % SLOTS;
+    const subRow = Math.floor(entry.slot / SLOTS);
     const slotWidth = ROW_WIDTH / SLOTS;
+    const growth = entry.kind === "good" ? 1 + (boost.get(isoWeekKey(entry.date)) ?? 0) : 1;
     return {
       entryId: entry.id,
       kind: entry.kind,
       tag: entry.tag,
+      pulled: entry.kind === "bad" && entry.pulledAt !== undefined,
       x: (slot + 0.5) * slotWidth - ROW_WIDTH / 2 + range(rng, -0.3, 0.3) * slotWidth,
       z: -daysBetween(entry.date, today) * ROW_DEPTH - subRow * SUB_ROW_DEPTH + range(rng, -0.08, 0.08),
       yaw: range(rng, -MAX_YAW, MAX_YAW),
-      scale: range(rng, 0.85, 1.15),
+      scale: range(rng, 0.85, 1.15) * growth,
       variant: seed % VARIANTS,
     };
   });

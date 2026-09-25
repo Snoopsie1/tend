@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: "Tend",
   description: "A daily journal that grows a garden.",
 };
+
+// viewportFit "cover" lets the page reach under the iPhone notch and home bar,
+// and turns on env(safe-area-inset-*) for the chrome.
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

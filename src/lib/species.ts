@@ -21,9 +21,10 @@ import { VARIANTS } from "@/lib/layout";
 import { hash, int, mulberry32, range, type Rng } from "@/lib/random";
 import { INKS, inkColor } from "@/lib/riso-effect";
 
-export type Species = Tag | "weed";
+export type Species = Tag | "weed" | "compost";
 
-export const speciesOf = (plant: { tag?: Tag }): Species => plant.tag ?? "weed";
+export const speciesOf = (plant: { tag?: Tag; pulled?: boolean }): Species =>
+  plant.tag ?? (plant.pulled ? "compost" : "weed");
 
 // Smallest flower head size, in world units. The camera fades rows into the
 // paper where a head this size drops under 12 CSS px.
@@ -198,6 +199,21 @@ function weed(rng: Rng) {
   });
 }
 
+// A pulled Bad. A low dark mound of compost where the weed stood.
+function compost(rng: Rng) {
+  const lumps = 2 + int(rng, 2);
+  return [
+    part(new SphereGeometry(0.13, 8, 3), DARK, matrix(new Vector3(), new Euler(), new Vector3(1, 0.4, 1))),
+    ...Array.from({ length: lumps }, () =>
+      part(
+        new SphereGeometry(0.03, 4, 2),
+        DARK,
+        matrix(new Vector3(range(rng, -0.08, 0.08), range(rng, 0.03, 0.05), range(rng, -0.08, 0.08))),
+      ),
+    ),
+  ];
+}
+
 const BUILDERS: Record<Species, (rng: Rng) => BufferGeometry[]> = {
   people: daisy,
   body: tulip,
@@ -205,6 +221,7 @@ const BUILDERS: Record<Species, (rng: Rng) => BufferGeometry[]> = {
   nature: bluebells,
   smallJoys: joyCluster,
   weed,
+  compost,
 };
 
 export const buildPlant = (species: Species, seed: number) => mergeGeometries(BUILDERS[species](mulberry32(seed)))!;

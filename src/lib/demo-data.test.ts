@@ -40,6 +40,22 @@ describe("demoEntries", () => {
     }
   });
 
+  it("numbers the slots of each day from 0", () => {
+    for (const day of groupByDate(entries).values()) {
+      expect(day.map((e) => e.slot)).toEqual(day.map((_, i) => i));
+    }
+  });
+
+  it("pulls some old weeds, never a Good and never one of today's", () => {
+    const pulled = entries.filter((e) => e.pulledAt);
+    expect(pulled.length).toBeGreaterThan(0);
+    for (const e of pulled) {
+      expect(e.kind).toBe("bad");
+      expect(e.date).not.toBe(TODAY);
+      expect(e.pulledAt!.slice(0, 10) <= TODAY).toBe(true);
+    }
+  });
+
   it("uses unique ids", () => {
     expect(new Set(entries.map((e) => e.id)).size).toBe(entries.length);
   });
